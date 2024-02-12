@@ -77,6 +77,14 @@ jobs:
         [System.Convert]::FromBase64String($pfxBase64) | Set-Content $pfxPath -AsByteStream
         Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $pfxPasswordSecure
 
+    # Add the following new step to sign the MSIX package
+    - name: Sign MSIX package
+      run: |
+        $msixFiles = Get-ChildItem -Path ./AppPackages/ -Recurse -Filter *.msix
+        foreach ($file in $msixFiles) {
+          SignTool sign /v /fd SHA256 /a /f $pfxPath /p $pfxPassword $file.FullName
+        }
+
     - name: Create the app package
       run: msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile=$pfxPath /p:PackageCertificatePassword=$pfxPassword /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
       env:
