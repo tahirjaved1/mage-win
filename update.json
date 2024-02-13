@@ -1,4 +1,4 @@
 {
   "latestVersion": "1.0.0.0",
-  "updateUrl": "https://github.com/tahirjaved1/mage-win/releases/download/1.0.0.0/yourapp_1.0.0.0.msix"
+  "updateUrl": "https://github.com/tahirjaved1/mage-win/releases/download/1.0.0.0/./**/*_x86_1.0.0.0.msix"
 }
