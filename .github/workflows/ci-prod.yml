@@ -206,7 +206,7 @@ jobs:
         run: |
           $version = "${{ steps.project-version-latest.outputs.current-version }}"
           $repoName = "${{ github.repository }}"
-          $updateUrl = "https://github.com/$repoName/releases/download/$version/yourapp_$version.msix"
+          $updateUrl = "https://github.com/$repoName/releases/download/$version/./**/*_${{ matrix.platform }}_$version.msix"
           
           $jsonPayload = @{
             latestVersion = $version
@@ -216,9 +216,14 @@ jobs:
           # Assuming the update.json file is in the root of your repository
           Set-Content -Path ./update.json -Value $jsonPayload
           
-          # Commit and push update.json to the repository
+          # Configure Git
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
+
+          # Ensure the repository is up-to-date
+          git pull --rebase
+
+          # Add, commit, and push update.json to the repository
           git add ./update.json
           git commit -m "Update update check endpoint with latest version $version"
           git push
