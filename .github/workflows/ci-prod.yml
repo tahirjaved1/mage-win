@@ -106,22 +106,38 @@ jobs:
         }
       shell: pwsh
 
-    - name: Sign MSIX package with self-signed certificate
+    - name: Find and Set SignTool Path
       run: |
-        # Dynamically find the latest version of the Windows SDK to get the signtool path
+        # Find the latest version of the Windows SDK to get the signtool path
         $sdkPath = Get-ChildItem -Path "${env:ProgramFiles(x86)}\Windows Kits\10\bin\" -Directory | Sort-Object Name -Descending | Select-Object -First 1
         $signtoolPath = Join-Path -Path $sdkPath.FullName -ChildPath "x64\signtool.exe"
         
         if (Test-Path $signtoolPath) {
-          $msixFiles = Get-ChildItem -Path ./AppPackages/ -Recurse -Filter *.msix
-          foreach ($file in $msixFiles) {
-            & $signtoolPath sign /v /fd SHA256 /f "./GitHubActionsWorkflow.pfx" /p "${{ secrets.CERTIFICATEPASSWORD }}" $file.FullName
-          }
+          # Set SIGTOOL_PATH environment variable for subsequent steps
+          echo "SIGTOOL_PATH=$signtoolPath" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
         } else {
           Write-Error "SignTool not found at path: $signtoolPath"
+          exit 1
         }
       shell: pwsh
 
+    # Then, in a later step, you can use this environment variable:
+
+    - name: Sign MSIX package with self-signed certificate
+      run: |
+        # Use the SignTool path from the environment variable
+        if (Test-Path $env:SIGTOOL_PATH) {
+          $msixFiles = Get-ChildItem -Path ./AppPackages/ -Recurse -Filter *.msix
+          foreach ($file in $msixFiles) {
+            & $env:SIGTOOL_PATH sign /v /fd SHA256 /f "./GitHubActionsWorkflow.pfx" /p "${{ secrets.CERTIFICATEPASSWORD }}" $file.FullName
+          }
+        } else {
+          Write-Error "SignTool path is not set in SIGTOOL_PATH environment variable."
+          exit 1
+        }
+      shell: pwsh
+      env:
+        SIGTOOL_PATH: ${{ env.SIGTOOL_PATH }}
 
     # - name: Create the app package
     #   run: msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile=$pfxPath /p:PackageCertificatePassword=$pfxPassword /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
