@@ -199,3 +199,27 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Add step to update the update check endpoint
+
+      - name: Update Update Check Endpoint
+        run: |
+          $version = "${{ steps.project-version-latest.outputs.current-version }}"
+          $repoName = "${{ github.repository }}"
+          $updateUrl = "https://github.com/$repoName/releases/download/$version/yourapp_$version.msix"
+          
+          $jsonPayload = @{
+            latestVersion = $version
+            updateUrl = $updateUrl
+          } | ConvertTo-Json
+          
+          # Assuming the update.json file is in the root of your repository
+          Set-Content -Path ./update.json -Value $jsonPayload
+          
+          # Commit and push update.json to the repository
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add ./update.json
+          git commit -m "Update update check endpoint with latest version $version"
+          git push
+        shell: pwsh
