@@ -97,16 +97,25 @@ jobs:
 
     - name: Install Windows SDK for SignTool
       run: |
-        choco install windows-sdk-10 -y
+        $package = 'windows-sdk-10'
+        $installedPackages = choco list --local-only
+        if ($installedPackages -like "*$package*") {
+          Write-Host "Package $package is already installed."
+        } else {
+          choco install $package -y --verbose
+        }
       shell: pwsh
 
     - name: Sign MSIX package with self-signed certificate
       run: |
-        $signtoolPath = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.18362.0\x64\signtool.exe"
+        # Dynamically find the latest version of the Windows SDK to get the signtool path
+        $sdkPath = Get-ChildItem -Path "${env:ProgramFiles(x86)}\Windows Kits\10\bin\" -Directory | Sort-Object Name -Descending | Select-Object -First 1
+        $signtoolPath = Join-Path -Path $sdkPath.FullName -ChildPath "x64\signtool.exe"
+        
         if (Test-Path $signtoolPath) {
           $msixFiles = Get-ChildItem -Path ./AppPackages/ -Recurse -Filter *.msix
           foreach ($file in $msixFiles) {
-            & $signtoolPath sign /v /fd SHA256 /a /f "./GitHubActionsWorkflow.pfx" /p "${{ secrets.CERTIFICATEPASSWORD }}" $file.FullName
+            & $signtoolPath sign /v /fd SHA256 /f "./GitHubActionsWorkflow.pfx" /p "${{ secrets.CERTIFICATEPASSWORD }}" $file.FullName
           }
         } else {
           Write-Error "SignTool not found at path: $signtoolPath"
