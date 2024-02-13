@@ -77,7 +77,7 @@ jobs:
     #     [System.Convert]::FromBase64String($pfxBase64) | Set-Content $pfxPath -AsByteStream
     #     Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $pfxPasswordSecure
 
-    - name: Build and create app package without signing
+    - name: Create the app package
       run: msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
       env:
         Appx_Bundle: Never
@@ -85,7 +85,6 @@ jobs:
         Appx_Package_Dir: ./AppPackages/
         Configuration: ${{ matrix.configuration }}
         Platform: ${{ matrix.platform }}
-      shell: pwsh
 
     - name: Generate a self-signed certificate
       run: |
