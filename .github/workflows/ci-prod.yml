@@ -101,12 +101,15 @@ jobs:
         $pwd = ConvertTo-SecureString -String "${{ secrets.CERTIFICATEPASSWORD }}" -Force -AsPlainText
         Export-PfxCertificate -Cert $cert -FilePath "./GitHubActionsWorkflow.pfx" -Password $pwd
         Export-Certificate -Cert $cert -FilePath "./GitHubActionsWorkflow.crt"
+
         # Convert the .pfx to a base64 string for GitHub Action
-        $pfxBytes = Get-Content -Path "./GitHubActionsWorkflow.pfx" -Encoding Byte
+        $pfxBytes = Get-Content -Path "./GitHubActionsWorkflow.pfx" -AsByteStream
         $base64Cert = [Convert]::ToBase64String($pfxBytes)
+
         # Extract certificate SHA1 hash and name
         $thumbprint = $cert.Thumbprint
         $certName = $cert.Subject
+
         # Set environment variables for use in subsequent steps
         echo "CERTIFICATE=$base64Cert" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
         echo "CERTHASH=$thumbprint" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
