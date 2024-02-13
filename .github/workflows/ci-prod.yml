@@ -68,6 +68,14 @@ jobs:
       env:
         Configuration: ${{ matrix.configuration }}
 
+    - name: Generate a self-signed certificate
+      run: |
+        $cert = New-SelfSignedCertificate -DnsName "GitHubActionsWorkflow" -CertStoreLocation "cert:\LocalMachine\My"
+        $pwd = ConvertTo-SecureString -String "${{ secrets.CERTIFICATEPASSWORD }}" -Force -AsPlainText
+        Export-PfxCertificate -Cert $cert -FilePath "./GitHubActionsWorkflow.pfx" -Password $pwd
+        Export-Certificate -Cert $cert -FilePath "./GitHubActionsWorkflow.crt"
+      shell: pwsh
+
     # - name: Decode and Import the PFX certificate
     #   run: |
     #     $pfxBase64 = "${{ secrets.BASE64_ENCODED_PFX }}"
@@ -84,6 +92,24 @@ jobs:
     #     foreach ($file in $msixFiles) {
     #       SignTool sign /v /fd SHA256 /a /f $pfxPath /p $pfxPassword $file.FullName
     #     }
+    - name: Build and create app package without signing
+      run: msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
+      env:
+        Appx_Bundle: Never
+        Appx_Package_Build_Mode: SideloadOnly
+        Appx_Package_Dir: ./AppPackages/
+        Configuration: ${{ matrix.configuration }}
+        Platform: ${{ matrix.platform }}
+      shell: pwsh
+
+    - name: Sign MSIX package with self-signed certificate
+      run: |
+        $pwd = ConvertTo-SecureString -String "YourPassword" -Force -AsPlainText
+        $msixFiles = Get-ChildItem -Path ./AppPackages/ -Recurse -Filter *.msix
+        foreach ($file in $msixFiles) {
+          SignTool sign /v /fd SHA256 /a /f "./GitHubActionsWorkflow.pfx" /p "${{ secrets.CERTIFICATEPASSWORD }}" $file.FullName
+        }
+      shell: pwsh
 
     # - name: Create the app package
     #   run: msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile=$pfxPath /p:PackageCertificatePassword=$pfxPassword /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
@@ -94,15 +120,15 @@ jobs:
     #     Configuration: ${{ matrix.configuration }}
     #     Platform: ${{ matrix.platform }}
 
-    - name: Create the app package
-      run: |
-        msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
-      env:
-        Appx_Bundle: Never
-        Appx_Package_Build_Mode: SideloadOnly
-        Appx_Package_Dir: ./AppPackages/
-        Configuration: ${{ matrix.configuration }}
-        Platform: ${{ matrix.platform }}
+    # - name: Create the app package
+    #   run: |
+    #     msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
+    #   env:
+    #     Appx_Bundle: Never
+    #     Appx_Package_Build_Mode: SideloadOnly
+    #     Appx_Package_Dir: ./AppPackages/
+    #     Configuration: ${{ matrix.configuration }}
+    #     Platform: ${{ matrix.platform }}
     
     # - name: Remove the PFX certificate
     #   run: Remove-Item -Path "GitHubActionsWorkflow.pfx"
