@@ -20,16 +20,16 @@ jobs:
     steps:
     - uses: actions/checkout@v4
   
-    - name: Setup dotnet
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '6.0.x'
+    # - name: Setup dotnet
+    #   uses: actions/setup-dotnet@v4
+    #   with:
+    #     dotnet-version: '6.0.x'
 
-    - name: Install dependencies
-      run: dotnet restore
+    # - name: Install dependencies
+    #   run: dotnet restore
 
-    - name: Build
-      run: dotnet build
+    # - name: Build
+    #   run: dotnet build
 
     # Uncomment to enable testing
     # - name: Test with the dotnet CLI
@@ -55,18 +55,18 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install .NET Core
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 6.0.x
+    # - name: Install .NET Core
+    #   uses: actions/setup-dotnet@v4
+    #   with:
+    #     dotnet-version: 6.0.x
 
-    - name: Setup MSBuild.exe
-      uses: microsoft/setup-msbuild@v2.0.0
+    # - name: Setup MSBuild.exe
+    #   uses: microsoft/setup-msbuild@v2.0.0
 
-    - name: Restore the application
-      run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration
-      env:
-        Configuration: ${{ matrix.configuration }}
+    # - name: Restore the application
+    #   run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration
+    #   env:
+    #     Configuration: ${{ matrix.configuration }}
 
     - name: Generate a self-signed certificate
       run: |
@@ -85,15 +85,15 @@ jobs:
     #     [System.Convert]::FromBase64String($pfxBase64) | Set-Content $pfxPath -AsByteStream
     #     Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $pfxPasswordSecure
 
-    - name: Build and create app package without signing
-      run: msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
-      env:
-        Appx_Bundle: Never
-        Appx_Package_Build_Mode: SideloadOnly
-        Appx_Package_Dir: ./AppPackages/
-        Configuration: ${{ matrix.configuration }}
-        Platform: ${{ matrix.platform }}
-      shell: pwsh
+    # - name: Build and create app package without signing
+    #   run: msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
+    #   env:
+    #     Appx_Bundle: Never
+    #     Appx_Package_Build_Mode: SideloadOnly
+    #     Appx_Package_Dir: ./AppPackages/
+    #     Configuration: ${{ matrix.configuration }}
+    #     Platform: ${{ matrix.platform }}
+    #   shell: pwsh
 
     - name: Install Windows SDK for SignTool
       run: |
@@ -163,45 +163,45 @@ jobs:
     # - name: Remove the PFX certificate
     #   run: Remove-Item -Path "GitHubActionsWorkflow.pfx"
 
-    - name: Upload MSIX package
-      uses: actions/upload-artifact@v4
-      with:
-        name: MSIX Package ${{ matrix.platform }}
-        path: ./AppPackages/**/*.msix
+    # - name: Upload MSIX package
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: MSIX Package ${{ matrix.platform }}
+    #     path: ./AppPackages/**/*.msix
 
-  create-tag-and-release:
-    if: ${{ github.actor != 'dependabot[bot]' }}
-    name: Create Tag and Release
-    needs: [deploy]
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        platform: [x64, x86]
+  # create-tag-and-release:
+  #   if: ${{ github.actor != 'dependabot[bot]' }}
+  #   name: Create Tag and Release
+  #   needs: [deploy]
+  #   runs-on: windows-latest
+  #   strategy:
+  #     matrix:
+  #       platform: [x64, x86]
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Fetches all history for all tags and branches
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0 # Fetches all history for all tags and branches
                 
-      - name: Download all MSIX packages
-        uses: actions/download-artifact@v4
+  #     - name: Download all MSIX packages
+  #       uses: actions/download-artifact@v4
 
-      - name: Get Project version from Package.appxmanifest
-        id: project-version-latest
-        run: |
-          [xml]$manifest = Get-Content -Path './Package.appxmanifest' # The path to the Package.appxmanifest file in the root directory
-          $version = $manifest.Package.Identity.Version
-          echo "::set-output name=current-version::$version"      
+  #     - name: Get Project version from Package.appxmanifest
+  #       id: project-version-latest
+  #       run: |
+  #         [xml]$manifest = Get-Content -Path './Package.appxmanifest' # The path to the Package.appxmanifest file in the root directory
+  #         $version = $manifest.Package.Identity.Version
+  #         echo "::set-output name=current-version::$version"      
 
-      - name: Create a tag and release
-        uses: softprops/action-gh-release@v1
-        continue-on-error: true
-        with:
-          files: |
-            ./**/*_${{ matrix.platform }}.msix
-          tag_name: ${{ steps.project-version-latest.outputs.current-version }}
-          name: v${{ steps.project-version-latest.outputs.current-version }}
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Create a tag and release
+  #       uses: softprops/action-gh-release@v1
+  #       continue-on-error: true
+  #       with:
+  #         files: |
+  #           ./**/*_${{ matrix.platform }}.msix
+  #         tag_name: ${{ steps.project-version-latest.outputs.current-version }}
+  #         name: v${{ steps.project-version-latest.outputs.current-version }}
+  #         generate_release_notes: true
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
