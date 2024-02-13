@@ -88,28 +88,28 @@ jobs:
 
     - name: Generate a self-signed certificate
       run: |
-        $cert = New-SelfSignedCertificate -DnsName "GitHubActionsWorkflow" -CertStoreLocation "cert:\LocalMachine\My"
+        $cert = New-SelfSignedCertificate -DnsName "Mage" -CertStoreLocation "cert:\LocalMachine\My"
         $pwd = ConvertTo-SecureString -String "${{ secrets.CERTIFICATEPASSWORD }}" -Force -AsPlainText
-        Export-PfxCertificate -Cert $cert -FilePath "./GitHubActionsWorkflow.pfx" -Password $pwd
-        Export-Certificate -Cert $cert -FilePath "./GitHubActionsWorkflow.crt"
+        Export-PfxCertificate -Cert $cert -FilePath "./Mage.pfx" -Password $pwd
+        Export-Certificate -Cert $cert -FilePath "./Mage.crt"
 
-        # Convert the .pfx to a base64 string for GitHub Action
-        $pfxBytes = Get-Content -Path "./GitHubActionsWorkflow.pfx" -AsByteStream
-        $base64Cert = [Convert]::ToBase64String($pfxBytes)
+        # # Convert the .pfx to a base64 string for GitHub Action
+        # $pfxBytes = Get-Content -Path "./Mage.pfx" -AsByteStream
+        # $base64Cert = [Convert]::ToBase64String($pfxBytes)
 
-        # Extract certificate SHA1 hash and name
-        $thumbprint = $cert.Thumbprint
-        $certName = $cert.Subject
+        # # Extract certificate SHA1 hash and name
+        # $thumbprint = $cert.Thumbprint
+        # $certName = $cert.Subject
 
-        # Set environment variables for use in subsequent steps
-        echo "CERTIFICATE=$base64Cert" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
-        echo "CERTHASH=$thumbprint" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
-        echo "CERTNAME=$certName" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
+        # # Set environment variables for use in subsequent steps
+        # echo "CERTIFICATE=$base64Cert" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
+        # echo "CERTHASH=$thumbprint" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
+        # echo "CERTNAME=$certName" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
       shell: pwsh
 
     - name: Sign MSIX Package with PowerShell
       run: |
-        $certPath = "./GitHubActionsWorkflow.pfx"
+        $certPath = "./Mage.pfx"
         $certPassword = "${{ secrets.CERTIFICATEPASSWORD }}"
         $securePassword = ConvertTo-SecureString -String $certPassword -Force -AsPlainText
         $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($certPath, $securePassword)
