@@ -48,6 +48,7 @@ jobs:
 
     env:
       Solution_Name: MageWin.sln
+      Project_Directory: mage-win
 
     steps:
     - name: Checkout
@@ -68,17 +69,29 @@ jobs:
       env:
         Configuration: ${{ matrix.configuration }}
 
+    - name: Decode .pfx file
+      run: |
+        echo ${{ secrets.PFX_FILE }} | base64 --decode > mycert.pfx
+
+    # Decode the base 64 encoded pfx and save the Signing_Certificate
+    - name: Decode the pfx and save the Signing_Certificate
+      run: |
+        $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.PFX_FILE }}")
+        $certificatePath = Join-Path -Path $env:Project_Directory -ChildPath mycert.pfx
+        [IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
+
     # - name: Decode and Import the PFX certificate
     #   run: |
-    #     $pfxBase64 = "${{ secrets.BASE64_ENCODED_PFX }}"
-    #     $pfxPassword = "${{ secrets.PFX_CERT_PASSWORD }}"
+    #     $pfxBase64 = "${{ secrets.PFX_FILE }}"
+    #     # $pfxPassword = "${{ secrets.PFX_CERT_PASSWORD }}"
     #     $pfxPath = "GitHubActionsWorkflow.pfx"
-    #     $pfxPasswordSecure = ConvertTo-SecureString -String $pfxPassword -Force -AsPlainText
+    #     # $pfxPasswordSecure = ConvertTo-SecureString -String $pfxPassword -Force -AsPlainText
     #     [System.Convert]::FromBase64String($pfxBase64) | Set-Content $pfxPath -AsByteStream
-    #     Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $pfxPasswordSecure
+    #     Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My
+    #     # Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $pfxPasswordSecure
 
     - name: Create the app package
-      run: msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
+      run: msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true /p:PackageCertificateKeyFile=mycert.pfx
       env:
         Appx_Bundle: Never
         Appx_Package_Build_Mode: SideloadOnly
@@ -86,51 +99,51 @@ jobs:
         Configuration: ${{ matrix.configuration }}
         Platform: ${{ matrix.platform }}
 
-    - name: Generate a self-signed certificate
-      run: |
-        $cert = New-SelfSignedCertificate -DnsName "Mage" -CertStoreLocation "cert:\LocalMachine\My"
-        $pwd = ConvertTo-SecureString -String "${{ secrets.CERTIFICATEPASSWORD }}" -Force -AsPlainText
-        Export-PfxCertificate -Cert $cert -FilePath "./Mage.pfx" -Password $pwd
-        Export-Certificate -Cert $cert -FilePath "./Mage.crt"
+    # - name: Generate a self-signed certificate
+    #   run: |
+    #     $cert = New-SelfSignedCertificate -DnsName "Mage" -CertStoreLocation "cert:\LocalMachine\My"
+    #     $pwd = ConvertTo-SecureString -String "${{ secrets.CERTIFICATEPASSWORD }}" -Force -AsPlainText
+    #     Export-PfxCertificate -Cert $cert -FilePath "./Mage.pfx" -Password $pwd
+    #     Export-Certificate -Cert $cert -FilePath "./Mage.crt"
 
-        # # Convert the .pfx to a base64 string for GitHub Action
-        # $pfxBytes = Get-Content -Path "./Mage.pfx" -AsByteStream
-        # $base64Cert = [Convert]::ToBase64String($pfxBytes)
+    #     # # Convert the .pfx to a base64 string for GitHub Action
+    #     # $pfxBytes = Get-Content -Path "./Mage.pfx" -AsByteStream
+    #     # $base64Cert = [Convert]::ToBase64String($pfxBytes)
 
-        # # Extract certificate SHA1 hash and name
-        # $thumbprint = $cert.Thumbprint
-        # $certName = $cert.Subject
+    #     # # Extract certificate SHA1 hash and name
+    #     # $thumbprint = $cert.Thumbprint
+    #     # $certName = $cert.Subject
 
-        # # Set environment variables for use in subsequent steps
-        # echo "CERTIFICATE=$base64Cert" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
-        # echo "CERTHASH=$thumbprint" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
-        # echo "CERTNAME=$certName" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
-      shell: pwsh
+    #     # # Set environment variables for use in subsequent steps
+    #     # echo "CERTIFICATE=$base64Cert" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
+    #     # echo "CERTHASH=$thumbprint" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
+    #     # echo "CERTNAME=$certName" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
+    #   shell: pwsh
 
-    - name: Sign MSIX Package with PowerShell
-      run: |
-        $certPath = "./Mage.pfx"
-        $certPassword = "${{ secrets.CERTIFICATEPASSWORD }}"
-        $securePassword = ConvertTo-SecureString -String $certPassword -Force -AsPlainText
-        $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($certPath, $securePassword)
-        Get-ChildItem -Path './AppPackages/${{ matrix.platform }}' -Recurse -Filter *.msix | ForEach-Object {
-          Set-AuthenticodeSignature -FilePath $_.FullName -Certificate $certificate -TimestampServer 'http://timestamp.digicert.com'
-        }
-      shell: pwsh
+    # - name: Sign MSIX Package with PowerShell
+    #   run: |
+    #     $certPath = "./Mage.pfx"
+    #     $certPassword = "${{ secrets.CERTIFICATEPASSWORD }}"
+    #     $securePassword = ConvertTo-SecureString -String $certPassword -Force -AsPlainText
+    #     $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($certPath, $securePassword)
+    #     Get-ChildItem -Path './AppPackages/${{ matrix.platform }}' -Recurse -Filter *.msix | ForEach-Object {
+    #       Set-AuthenticodeSignature -FilePath $_.FullName -Certificate $certificate -TimestampServer 'http://timestamp.digicert.com'
+    #     }
+    #   shell: pwsh
 
-    - name: Verify MSIX Package Signatures
-      run: |
-        $filesToVerify = Get-ChildItem -Path './AppPackages/${{ matrix.platform }}' -Recurse -Filter *.msix
-        foreach ($file in $filesToVerify) {
-          $signature = Get-AuthenticodeSignature -FilePath $file.FullName
-          if ($signature.Status -eq "Valid") {
-            Write-Host "Signature is valid for file: $file"
-          } else {
-            Write-Host "Signature is NOT valid for file: $file"
-            exit 1
-          }
-        }
-      shell: pwsh
+    # - name: Verify MSIX Package Signatures
+    #   run: |
+    #     $filesToVerify = Get-ChildItem -Path './AppPackages/${{ matrix.platform }}' -Recurse -Filter *.msix
+    #     foreach ($file in $filesToVerify) {
+    #       $signature = Get-AuthenticodeSignature -FilePath $file.FullName
+    #       if ($signature.Status -eq "Valid") {
+    #         Write-Host "Signature is valid for file: $file"
+    #       } else {
+    #         Write-Host "Signature is NOT valid for file: $file"
+    #         exit 1
+    #       }
+    #     }
+    #   shell: pwsh
 
 
     # - name: Code Sign MSIX package
@@ -199,32 +212,3 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Add step to update the update check endpoint
-
-      - name: Update Update Check Endpoint
-        run: |
-          $version = "${{ steps.project-version-latest.outputs.current-version }}"
-          $repoName = "${{ github.repository }}"
-          $updateUrl = "https://github.com/$repoName/releases/download/$version/./**/*_${{ matrix.platform }}_$version.msix"
-          
-          $jsonPayload = @{
-            latestVersion = $version
-            updateUrl = $updateUrl
-          } | ConvertTo-Json
-          
-          # Assuming the update.json file is in the root of your repository
-          Set-Content -Path ./update.json -Value $jsonPayload
-          
-          # Configure Git
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-
-          # Ensure the repository is up-to-date
-          git pull --rebase
-
-          # Add, commit, and push update.json to the repository
-          git add ./update.json
-          git commit -m "Update update check endpoint with latest version $version"
-          git push
-        shell: pwsh

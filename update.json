@@ -1,4 +1,14 @@
+// {
+//   "latestVersion": "1.0.0.0",
+//   "updateUrl_x64": "https://github.com/tahirjaved1/mage-win/releases/download/1.0.0.0/./**/*_x64_1.0.0.0.msix",
+//   "updateUrl_x84": "https://github.com/tahirjaved1/mage-win/releases/download/1.0.0.0/./**/*_x86_1.0.0.0.msix"
+// }
+
 {
   "latestVersion": "1.0.0.0",
-  "updateUrl": "https://github.com/tahirjaved1/mage-win/releases/download/1.0.0.0/./**/*_x86_1.0.0.0.msix"
+  "updateUrl_x64": "https://github.com/tahirjaved1/mage-win/releases/download/1.0.0.0/MageWin_1.0.0.0_x64.msix",
+  "updateUrl_x84": "https://github.com/tahirjaved1/mage-win/releases/download/1.0.0.0/MageWin_1.0.0.0_x86.msix"
 }
+
+
+// https://github.com/tahirjaved1/mage-win/releases/download/1.0.0.0/MageWin_1.0.0.0_x64.msix
