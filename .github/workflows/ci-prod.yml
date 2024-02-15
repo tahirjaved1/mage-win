@@ -67,7 +67,6 @@ jobs:
       run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration
       env:
         Configuration: ${{ matrix.configuration }}
-
     # - name: Decode the pfx and save the Signing_Certificate
     #   run: |
     #     $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.PFX_FILE }}")
@@ -86,8 +85,7 @@ jobs:
         Appx_Package_Build_Mode: SideloadOnly
         Appx_Package_Dir: ./AppPackages/
         Configuration: ${{ matrix.configuration }}
-        Platform: ${{ matrix.platform }}
-
+        Platform: ${{ matrix.platform }}        
 
     # - name: Obtain Let's Encrypt Certificate and Sign Package
     #   run: |
