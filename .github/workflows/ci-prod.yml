@@ -74,42 +74,56 @@ jobs:
     #     [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
     #   shell: pwsh
 
-    - name: Create the app package
-      run: |
-        $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.PFX_FILE }}")
-        $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "mycert.pfx"
-        [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
-        msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="$certificatePath" /p:PackageCertificatePassword="${{ secrets.CERTIFICATEPASSWORD }}" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
-      env:
-        Appx_Bundle: Never
-        Appx_Package_Build_Mode: SideloadOnly
-        Appx_Package_Dir: ./AppPackages/
-        Configuration: ${{ matrix.configuration }}
-        Platform: ${{ matrix.platform }}        
-
-    # - name: Obtain Let's Encrypt Certificate and Sign Package
-    #   run: |
-    #     Install-Module -Name Posh-ACME -Scope CurrentUser -Force
-    #     Set-PAServer LE_PROD # Set ACME server to Let's Encrypt production server
-    #     New-PAAccount -AcceptTOS -Contact "tahirjavedbhutta@gmail.com" -Force
-    #     $pArgs = @{
-    #         Domain = "msixtest.duckdns.org"
-    #         DnsPlugin = "DuckDNS"
-    #         PluginArgs = @{DuckDNSToken="a3a21270-a758-46a9-9e24-ae3d31773d9f"}
-    #         PfxPass = "${{ secrets.CERTIFICATEPASSWORD }}"
-    #     }
-    #     $certInfo = New-PACertificate @pArgs -Install
-    #     $pfxPath = $certInfo.PfxFullChainFile
-
     # - name: Create the app package
     #   run: |
-    #     msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="$pfxPath" /p:PackageCertificatePassword="${{ secrets.CERTIFICATEPASSWORD }}" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
+    #     $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.PFX_FILE }}")
+    #     $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "mycert.pfx"
+    #     [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
+    #     msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="$certificatePath" /p:PackageCertificatePassword="${{ secrets.CERTIFICATEPASSWORD }}" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
     #   env:
     #     Appx_Bundle: Never
     #     Appx_Package_Build_Mode: SideloadOnly
     #     Appx_Package_Dir: ./AppPackages/
     #     Configuration: ${{ matrix.configuration }}
-    #     Platform: ${{ matrix.platform }}
+    #     Platform: ${{ matrix.platform }}        
+
+    - name: Obtain Let's Encrypt Certificate and Sign Package
+      run: |
+        Install-Module -Name Posh-ACME -Scope CurrentUser -Force
+        Set-PAServer LE_PROD # Set ACME server to Let's Encrypt production server
+        New-PAAccount -AcceptTOS -Contact "tahirjavedbhutta@gmail.com" -Force
+        Write-Output "ACME account created."
+
+        $pArgs = @{
+            Domain = "msixtest.duckdns.org"
+            DnsPlugin = "DuckDNS"
+            PluginArgs = @{DuckDNSToken="a3a21270-a758-46a9-9e24-ae3d31773d9f"}
+            PfxPass = "${{ secrets.CERTIFICATEPASSWORD }}"
+        }
+
+        Write-Output "Requesting certificate..."
+        $certInfo = New-PACertificate @pArgs -Install
+
+        if ($null -eq $certInfo) {
+            Write-Error "Failed to obtain certificate."
+            exit 1
+        }
+
+        Write-Output "Certificate obtained."
+        $pfxPath = $certInfo.PfxFullChainFile
+
+        Write-Output "Using the PFX file for package signing..."
+
+
+    - name: Create the app package
+      run: |
+        msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="$pfxPath" /p:PackageCertificatePassword="${{ secrets.CERTIFICATEPASSWORD }}" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
+      env:
+        Appx_Bundle: Never
+        Appx_Package_Build_Mode: SideloadOnly
+        Appx_Package_Dir: ./AppPackages/
+        Configuration: ${{ matrix.configuration }}
+        Platform: ${{ matrix.platform }}
 
 
 
