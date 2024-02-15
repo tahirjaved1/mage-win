@@ -87,7 +87,8 @@ jobs:
     #     # Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $pfxPasswordSecure
 
     # - name: Create the app package
-    #   run: msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true /p:PackageCertificateKeyFile=mycert.pfx
+    #   run: |
+    #     msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="./mycert.pfx" /p:PackageCertificatePassword="${{ secrets.CERTIFICATEPASSWORD }}" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
     #   env:
     #     Appx_Bundle: Never
     #     Appx_Package_Build_Mode: SideloadOnly
@@ -95,31 +96,11 @@ jobs:
     #     Configuration: ${{ matrix.configuration }}
     #     Platform: ${{ matrix.platform }}
 
-    # - name: Generate a self-signed certificate
-    #   run: |
-    #     $cert = New-SelfSignedCertificate -DnsName "Mage" -CertStoreLocation "cert:\LocalMachine\My"
-    #     $pwd = ConvertTo-SecureString -String "${{ secrets.CERTIFICATEPASSWORD }}" -Force -AsPlainText
-    #     Export-PfxCertificate -Cert $cert -FilePath "./Mage.pfx" -Password $pwd
-    #     Export-Certificate -Cert $cert -FilePath "./Mage.crt"
-
-    #     # # Convert the .pfx to a base64 string for GitHub Action
-    #     # $pfxBytes = Get-Content -Path "./Mage.pfx" -AsByteStream
-    #     # $base64Cert = [Convert]::ToBase64String($pfxBytes)
-
-    #     # # Extract certificate SHA1 hash and name
-    #     # $thumbprint = $cert.Thumbprint
-    #     # $certName = $cert.Subject
-
-    #     # # Set environment variables for use in subsequent steps
-    #     # echo "CERTIFICATE=$base64Cert" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
-    #     # echo "CERTHASH=$thumbprint" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
-    #     # echo "CERTNAME=$certName" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
-    #   shell: pwsh
-
 
     - name: Obtain Let's Encrypt Certificate and Sign Package
       run: |
         Install-Module -Name Posh-ACME -Scope CurrentUser -Force
+        Set-PAServer LE_Main # Set ACME server to Let's Encrypt production server
         New-PAAccount -AcceptTOS -Contact "tahirjavedbhutta@gmail.com"
         $pArgs = @{
             Domain = "msixtest.duckdns.org"
