@@ -86,14 +86,14 @@ jobs:
     #     Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My
     #     # Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $pfxPasswordSecure
 
-    - name: Create the app package
-      run: msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true /p:PackageCertificateKeyFile=mycert.pfx
-      env:
-        Appx_Bundle: Never
-        Appx_Package_Build_Mode: SideloadOnly
-        Appx_Package_Dir: ./AppPackages/
-        Configuration: ${{ matrix.configuration }}
-        Platform: ${{ matrix.platform }}
+    # - name: Create the app package
+    #   run: msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true /p:PackageCertificateKeyFile=mycert.pfx
+    #   env:
+    #     Appx_Bundle: Never
+    #     Appx_Package_Build_Mode: SideloadOnly
+    #     Appx_Package_Dir: ./AppPackages/
+    #     Configuration: ${{ matrix.configuration }}
+    #     Platform: ${{ matrix.platform }}
 
     # - name: Generate a self-signed certificate
     #   run: |
@@ -115,6 +115,27 @@ jobs:
     #     # echo "CERTHASH=$thumbprint" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
     #     # echo "CERTNAME=$certName" | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_ENV
     #   shell: pwsh
+
+
+    - name: Generate a self-signed certificate
+      run: |
+        $cert = New-SelfSignedCertificate -DnsName "Mage" -CertStoreLocation "cert:\LocalMachine\My"
+        $pwd = ConvertTo-SecureString -String "${{ secrets.CERTIFICATEPASSWORD }}" -Force -AsPlainText
+        Export-PfxCertificate -Cert $cert -FilePath "./Mage.pfx" -Password $pwd
+        Export-Certificate -Cert $cert -FilePath "./Mage.crt"
+      shell: pwsh
+
+    - name: Create the app package
+      run: |
+        msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="./Mage.pfx" /p:PackageCertificatePassword="${{ secrets.CERTIFICATEPASSWORD }}" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
+      env:
+        Appx_Bundle: Never
+        Appx_Package_Build_Mode: SideloadOnly
+        Appx_Package_Dir: ./AppPackages/
+        Configuration: ${{ matrix.configuration }}
+        Platform: ${{ matrix.platform }}
+
+
 
     # - name: Sign MSIX Package with PowerShell
     #   run: |
