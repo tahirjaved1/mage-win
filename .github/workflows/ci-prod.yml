@@ -75,17 +75,6 @@ jobs:
     #     [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
     #   shell: pwsh
 
-
-    # - name: Decode and Import the PFX certificate
-    #   run: |
-    #     $pfxBase64 = "${{ secrets.PFX_FILE }}"
-    #     # $pfxPassword = "${{ secrets.PFX_CERT_PASSWORD }}"
-    #     $pfxPath = "GitHubActionsWorkflow.pfx"
-    #     # $pfxPasswordSecure = ConvertTo-SecureString -String $pfxPassword -Force -AsPlainText
-    #     [System.Convert]::FromBase64String($pfxBase64) | Set-Content $pfxPath -AsByteStream
-    #     Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My
-    #     # Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $pfxPasswordSecure
-
     # - name: Create the app package
     #   run: |
     #     msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="./mycert.pfx" /p:PackageCertificatePassword="${{ secrets.CERTIFICATEPASSWORD }}" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
@@ -100,7 +89,7 @@ jobs:
     - name: Obtain Let's Encrypt Certificate and Sign Package
       run: |
         Install-Module -Name Posh-ACME -Scope CurrentUser -Force
-        Set-PAServer LE_Main # Set ACME server to Let's Encrypt production server
+        Set-PAServer LE_PROD # Set ACME server to Let's Encrypt production server
         New-PAAccount -AcceptTOS -Contact "tahirjavedbhutta@gmail.com"
         $pArgs = @{
             Domain = "msixtest.duckdns.org"
@@ -159,28 +148,6 @@ jobs:
     #     }
     #   shell: pwsh
 
-
-    # - name: Code Sign MSIX package
-    #   uses: skymatic/code-sign-action@v2.0.1
-    #   with:
-    #     certificate: ${{ env.CERTIFICATE }}
-    #     password: ${{ secrets.CERTIFICATEPASSWORD }}
-    #     certificatesha1: ${{ env.CERTHASH }}
-    #     certificatename: ${{ env.CERTNAME }}
-    #     folder: './AppPackages/'
-    #     recursive: true
-    #     description: 'My App'
-    #     timestampUrl: 'http://timestamp.digicert.com'
-
-    # - name: Create the app package
-    #   run: msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile=$pfxPath /p:PackageCertificatePassword=$pfxPassword /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
-    #   env:
-    #     Appx_Bundle: Never
-    #     Appx_Package_Build_Mode: SideloadOnly
-    #     Appx_Package_Dir: ./AppPackages/
-    #     Configuration: ${{ matrix.configuration }}
-    #     Platform: ${{ matrix.platform }}
-    
     # - name: Remove the PFX certificate
     #   run: Remove-Item -Path "GitHubActionsWorkflow.pfx"
 
