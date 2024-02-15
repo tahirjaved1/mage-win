@@ -71,11 +71,9 @@ jobs:
     - name: Decode the pfx and save the Signing_Certificate
       run: |
         $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.PFX_FILE }}")
-        $certificatePath = Join-Path -Path $env:Appx_Package_Dir -ChildPath "mycert.pfx"
+        $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "mycert.pfx"
         [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
       shell: pwsh
-      env:
-        Appx_Package_Dir: ./AppPackages/
 
 
     # - name: Decode and Import the PFX certificate
