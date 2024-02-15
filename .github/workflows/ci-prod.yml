@@ -3,7 +3,7 @@ name: ci-prod.yml
 on:
   push:
     branches:
-      - main
+      - fix/certificate-issue
   workflow_dispatch:
 
 permissions:
@@ -48,7 +48,6 @@ jobs:
 
     env:
       Solution_Name: MageWin.sln
-      Project_Directory: mage-win
 
     steps:
     - name: Checkout
@@ -72,9 +71,12 @@ jobs:
     - name: Decode the pfx and save the Signing_Certificate
       run: |
         $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.PFX_FILE }}")
-        $certificatePath = Join-Path -Path $env:Project_Directory -ChildPath "mycert.pfx"
+        $certificatePath = Join-Path -Path $env:Appx_Package_Dir -ChildPath "mycert.pfx"
         [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
       shell: pwsh
+      env:
+        Appx_Package_Dir: ./AppPackages/
+
 
     # - name: Decode and Import the PFX certificate
     #   run: |
