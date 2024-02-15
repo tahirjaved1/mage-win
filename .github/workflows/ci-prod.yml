@@ -95,7 +95,7 @@ jobs:
         Write-Output "ACME account created."
 
         $pArgs = @{
-            Domain = "msixtest.duckdns.org"
+            Domain = "maxipackage.duckdns.org"
             DnsPlugin = "DuckDNS"
             PluginArgs = @{DuckDNSToken="a3a21270-a758-46a9-9e24-ae3d31773d9f"}
             PfxPass = "${{ secrets.CERTIFICATEPASSWORD }}"
