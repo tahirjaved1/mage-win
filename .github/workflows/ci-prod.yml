@@ -120,12 +120,11 @@ jobs:
     - name: Obtain Let's Encrypt Certificate and Sign Package
       run: |
         Install-Module -Name Posh-ACME -Scope CurrentUser -Force
+        New-PAAccount -AcceptTOS -Contact "tahirjavedbhutta@gmail.com"
         $pArgs = @{
             Domain = "msixtest.duckdns.org"
-            ContactEmail = "tahirjavedbhutta@gmail.com"
             DnsPlugin = "DuckDNS"
             PluginArgs = @{DuckDNSToken="a3a21270-a758-46a9-9e24-ae3d31773d9f"}
-            AcceptTOS = $true
             PfxPass = "${{ secrets.CERTIFICATEPASSWORD }}"
         }
         $certInfo = New-PACertificate @pArgs -Install
