@@ -69,11 +69,6 @@ jobs:
       env:
         Configuration: ${{ matrix.configuration }}
 
-    - name: Decode .pfx file
-      run: |
-        echo ${{ secrets.PFX_FILE }} | base64 --decode > mycert.pfx
-      shell: pwsh
-
     - name: Decode the pfx and save the Signing_Certificate
       run: |
         $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.PFX_FILE }}")
