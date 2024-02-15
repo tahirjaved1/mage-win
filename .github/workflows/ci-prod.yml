@@ -72,13 +72,14 @@ jobs:
     - name: Decode .pfx file
       run: |
         echo ${{ secrets.PFX_FILE }} | base64 --decode > mycert.pfx
+      shell: pwsh
 
-    # Decode the base 64 encoded pfx and save the Signing_Certificate
     - name: Decode the pfx and save the Signing_Certificate
       run: |
         $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.PFX_FILE }}")
-        $certificatePath = Join-Path -Path $env:Project_Directory -ChildPath mycert.pfx
-        [IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
+        $certificatePath = Join-Path -Path $env:Project_Directory -ChildPath "mycert.pfx"
+        [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
+      shell: pwsh
 
     # - name: Decode and Import the PFX certificate
     #   run: |
