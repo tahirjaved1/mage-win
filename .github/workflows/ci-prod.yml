@@ -68,12 +68,12 @@ jobs:
       env:
         Configuration: ${{ matrix.configuration }}
 
-    - name: Decode the pfx and save the Signing_Certificate
-      run: |
-        $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.PFX_FILE }}")
-        $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "mycert.pfx"
-        [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
-      shell: pwsh
+    # - name: Decode the pfx and save the Signing_Certificate
+    #   run: |
+    #     $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.PFX_FILE }}")
+    #     $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "mycert.pfx"
+    #     [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
+    #   shell: pwsh
 
 
     # - name: Decode and Import the PFX certificate
@@ -117,23 +117,40 @@ jobs:
     #   shell: pwsh
 
 
-    - name: Generate a self-signed certificate
+    - name: Obtain Let's Encrypt Certificate and Sign Package
       run: |
-        $cert = New-SelfSignedCertificate -DnsName "Mage" -CertStoreLocation "cert:\LocalMachine\My"
-        $pwd = ConvertTo-SecureString -String "${{ secrets.CERTIFICATEPASSWORD }}" -Force -AsPlainText
-        Export-PfxCertificate -Cert $cert -FilePath "./Mage.pfx" -Password $pwd
-        Export-Certificate -Cert $cert -FilePath "./Mage.crt"
+        Install-Module -Name Posh-ACME -Scope CurrentUser -Force
+        $pArgs = @{
+            Domain = "msixtest.duckdns.org"
+            ContactEmail = "tahirjavedbhutta@gmail.com"
+            DnsPlugin = "DuckDNS"
+            PluginArgs = @{DuckDNSToken="a3a21270-a758-46a9-9e24-ae3d31773d9f"}
+            AcceptTOS = $true
+            PfxPass = "${{ secrets.CERTIFICATEPASSWORD }}"
+        }
+        $certInfo = New-PACertificate @pArgs -Install
+        $pfxPath = $certInfo.PfxFullChainFile
+        
+        # Use the PFX file for package signing
+        msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="$pfxPath" /p:PackageCertificatePassword="${{ secrets.CERTIFICATEPASSWORD }}" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
       shell: pwsh
-
-    - name: Create the app package
-      run: |
-        msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="./Mage.pfx" /p:PackageCertificatePassword="${{ secrets.CERTIFICATEPASSWORD }}" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
       env:
         Appx_Bundle: Never
         Appx_Package_Build_Mode: SideloadOnly
         Appx_Package_Dir: ./AppPackages/
         Configuration: ${{ matrix.configuration }}
         Platform: ${{ matrix.platform }}
+
+
+    # - name: Create the app package
+    #   run: |
+    #     msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="./Mage.pfx" /p:PackageCertificatePassword="${{ secrets.CERTIFICATEPASSWORD }}" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
+    #   env:
+    #     Appx_Bundle: Never
+    #     Appx_Package_Build_Mode: SideloadOnly
+    #     Appx_Package_Dir: ./AppPackages/
+    #     Configuration: ${{ matrix.configuration }}
+    #     Platform: ${{ matrix.platform }}
 
 
 
