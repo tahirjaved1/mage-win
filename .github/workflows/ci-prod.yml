@@ -99,27 +99,16 @@ jobs:
         }
         $certInfo = New-PACertificate @pArgs -Install
         $pfxPath = $certInfo.PfxFullChainFile
-        
-        # Use the PFX file for package signing
+
+    - name: Create the app package
+      run: |
         msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="$pfxPath" /p:PackageCertificatePassword="${{ secrets.CERTIFICATEPASSWORD }}" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
-      shell: pwsh
       env:
         Appx_Bundle: Never
         Appx_Package_Build_Mode: SideloadOnly
         Appx_Package_Dir: ./AppPackages/
         Configuration: ${{ matrix.configuration }}
         Platform: ${{ matrix.platform }}
-
-
-    # - name: Create the app package
-    #   run: |
-    #     msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="./Mage.pfx" /p:PackageCertificatePassword="${{ secrets.CERTIFICATEPASSWORD }}" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
-    #   env:
-    #     Appx_Bundle: Never
-    #     Appx_Package_Build_Mode: SideloadOnly
-    #     Appx_Package_Dir: ./AppPackages/
-    #     Configuration: ${{ matrix.configuration }}
-    #     Platform: ${{ matrix.platform }}
 
 
 
