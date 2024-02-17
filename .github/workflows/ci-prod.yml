@@ -68,12 +68,12 @@ jobs:
       env:
         Configuration: ${{ matrix.configuration }}
 
-    - name: Decode the pfx and save the Signing_Certificate
-      run: |
-        $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.cert }}")
-        $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "mycert.pfx"
-        [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
-      shell: pwsh
+    # - name: Decode the pfx and save the Signing_Certificate
+    #   run: |
+    #     $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.cert }}")
+    #     $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "mycert.pfx"
+    #     [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
+    #   shell: pwsh
 
     - name: Create the app package
       run: |
@@ -112,21 +112,21 @@ jobs:
         Write-Host "Starting package signing..."
         
         # Output secrets/env vars
-        Write-Host "Certificate password: ***"
-        Write-Host "Certificate path: ./mycert.pfx"
+        Write-Host "Certificate path: ./code_signing_cert.pfx"
     
-        $securePassword = ConvertTo-SecureString -String "${{ secrets.certpass }}" -AsPlainText -Force
-        $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2("./mycert.pfx", $securePassword)
+        # Create a certificate object without a password
+        $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2("./code_signing_cert.pfx")
     
         Get-ChildItem -Path './AppPackages' -Recurse -Filter *.msix | ForEach-Object {
           Write-Host "Signing package: $($_.FullName)"
-    
+          
           # Test single package signing  
-          Set-AuthenticodeSignature -FilePath $_.FullName -Certificate $cert -TimestampServer 'http://timestamp.digicert.com'
+          Set-AuthenticodeSignature -FilePath $_.FullName -Certificate $cert
         }
     
         Write-Host "Package signing completed."
       shell: pwsh
+
 
     # - name: Sign MSIX packages
     #   run: |
