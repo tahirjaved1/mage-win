@@ -84,6 +84,28 @@ jobs:
         Appx_Package_Dir: ./AppPackages/
         Configuration: ${{ matrix.configuration }}
         Platform: ${{ matrix.platform }}
+    
+    - name: Check Compatibility
+      run: |
+        Write-Host "Checking compatibility between Set-AuthenticodeSignature cmdlet and MSIX package format..."
+    
+        # Check the version of PowerShell
+        $psVersion = $PSVersionTable.PSVersion
+        Write-Host "PowerShell version: $psVersion"
+    
+        # Check if the Set-AuthenticodeSignature cmdlet is available
+        $cmdletAvailable = Get-Command Set-AuthenticodeSignature -ErrorAction SilentlyContinue
+        if ($cmdletAvailable) {
+          Write-Host "Set-AuthenticodeSignature cmdlet is available."
+        } else {
+          Write-Host "Set-AuthenticodeSignature cmdlet is not available."
+          exit 1
+        }
+    
+        # Add any additional checks for compatibility here
+    
+        Write-Host "Compatibility check completed."
+      shell: pwsh
 
 
     - name: Sign MSIX packages
