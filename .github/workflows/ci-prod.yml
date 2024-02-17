@@ -85,35 +85,36 @@ jobs:
         Configuration: ${{ matrix.configuration }}
         Platform: ${{ matrix.platform }}
 
-    - name: Sign MSIX Package with PowerShell
+
+    - name: Sign MSIX packages
       run: |
         Write-Host "Starting package signing..."
         
-        # Output secrets/env vars for troubleshooting
-        Write-Host "Certificate password: ${{ secrets.CERTIFICATEPASSWORD }}"
-        Write-Host "Certificate path: ${{ env.certificatePath }}"
-    
-        $securePassword = ConvertTo-SecureString -String ${{ secrets.CERTIFICATEPASSWORD }} -Force -AsPlainText
-    
+        # Output secrets/env vars
+        Write-Host "Certificate password: $env:CERTIFICATE_PASSWORD"
+        Write-Host "Certificate path: $env:CERTIFICATE_PATH"
+
+        $securePassword = ConvertTo-SecureString -String $env:CERTIFICATE_PASSWORD -Force -AsPlainText
+
         # Test certificate object creation
-        $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2(${{ env.certificatePath }}, $securePassword)
+        $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($env:CERTIFICATE_PATH, $securePassword)
         if(!$certificate){
           Write-Error "Certificate object creation failed"
           exit 1
         }
-    
-        Get-ChildItem -Path './AppPackages/${{ matrix.platform }}' -Recurse -Filter *.msix | ForEach-Object {
-          Write-Host "Signing package: $($_.FullName)"  
-    
-          # Test single package signing
+
+        Get-ChildItem -Path './AppPackages' -Recurse -Filter *.msix | ForEach-Object {
+          Write-Host "Signing package: $($_.FullName)"
+
+          # Test single package signing  
           Set-AuthenticodeSignature -FilePath $_.FullName -Certificate $certificate -TimestampServer 'http://timestamp.digicert.com'
         }
-    
+
         Write-Host "Package signing completed."
-    
       shell: pwsh
       env:
-        certificatePath: ${{ github.workspace }}/mycert.pfx
+        CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }} 
+        CERTIFICATE_PATH: ${{ github.workspace }}/mycert.pfx
 
 
     - name: Verify MSIX Package Signatures
