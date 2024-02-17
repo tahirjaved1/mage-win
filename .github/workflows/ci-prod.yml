@@ -68,16 +68,17 @@ jobs:
       env:
         Configuration: ${{ matrix.configuration }}
 
-    # - name: Decode the pfx and save the Signing_Certificate
-    #   run: |
-    #     $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.cert }}")
-    #     $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "mycert.pfx"
-    #     [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
-    #   shell: pwsh
+    - name: Decode the pfx and save the Signing_Certificate
+      run: |
+        # $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.cert }}")
+        # $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "mycert.pfx"
+        $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "./code_signing_cert.pfx"
+        [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
+      shell: pwsh
 
     - name: Create the app package
       run: |
-        msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="$certificatePath" /p:PackageCertificatePassword="${{ secrets.certpass }}" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
+        msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="$certificatePath" /p:PackageCertificatePassword="12345" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
       env:
         Appx_Bundle: Never
         Appx_Package_Build_Mode: SideloadOnly
@@ -115,6 +116,7 @@ jobs:
         Write-Host "Certificate path: ./code_signing_cert.pfx"
     
         # Create a certificate object without a password
+        $securePassword = ConvertTo-SecureString -String $env:CERTIFICATE_PASSWORD -AsPlainText -Force
         $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2("./code_signing_cert.pfx")
     
         Get-ChildItem -Path './AppPackages' -Recurse -Filter *.msix | ForEach-Object {
@@ -126,6 +128,8 @@ jobs:
     
         Write-Host "Package signing completed."
       shell: pwsh
+      env:
+        CERTIFICATE_PASSWORD: 12345
 
 
     # - name: Sign MSIX packages
@@ -151,7 +155,6 @@ jobs:
     #   env:
     #     CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATEPASSWORD }}
     #     CERTIFICATE_PATH: ${{ github.workspace }}/mycert.pfx
-
 
 
     - name: Verify MSIX Package Signatures
