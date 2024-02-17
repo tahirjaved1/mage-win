@@ -85,16 +85,16 @@ jobs:
         Configuration: ${{ matrix.configuration }}
         Platform: ${{ matrix.platform }}
 
-    - name: Sign MSIX Package with PowerShell
-      run: |
-        $securePassword = ConvertTo-SecureString -String ${{ secrets.CERTIFICATEPASSWORD }} -Force -AsPlainText
-        $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($certificatePath, $securePassword)
-        Get-ChildItem -Path './AppPackages/${{ matrix.platform }}' -Recurse -Filter *.msix | ForEach-Object {
-          Set-AuthenticodeSignature -FilePath $_.FullName -Certificate $certificate -TimestampServer 'http://timestamp.digicert.com'
-        }
-      shell: pwsh
-      env:
-        certificatePath: ${{ github.workspace }}/mycert.pfx
+    # - name: Sign MSIX Package with PowerShell
+    #   run: |
+    #     $securePassword = ConvertTo-SecureString -String ${{ secrets.CERTIFICATEPASSWORD }} -Force -AsPlainText
+    #     $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($certificatePath, $securePassword)
+    #     Get-ChildItem -Path './AppPackages/${{ matrix.platform }}' -Recurse -Filter *.msix | ForEach-Object {
+    #       Set-AuthenticodeSignature -FilePath $_.FullName -Certificate $certificate -TimestampServer 'http://timestamp.digicert.com'
+    #     }
+    #   shell: pwsh
+    #   env:
+    #     certificatePath: ${{ github.workspace }}/mycert.pfx
 
     - name: Verify MSIX Package Signatures
       run: |
