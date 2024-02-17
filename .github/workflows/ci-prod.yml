@@ -79,7 +79,7 @@ jobs:
     - name: Decode the pfx and save the Signing_Certificate
       run: |
         $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "./code_signing_cert.pfx"
-        [System.IO.File]::Copy("./code_signing_cert.pfx", $certificatePath)
+        # [System.IO.File]::Copy("./code_signing_cert.pfx", $certificatePath)
       shell: pwsh
 
     - name: Create the app package
