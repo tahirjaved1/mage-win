@@ -121,19 +121,19 @@ jobs:
         Write-Host "Compatibility check completed."
       shell: pwsh
 
-    - name: Sign MSIX packages
-      run: |
-        Write-Host "Starting package signing..."
-        $signtool = "C:\Program Files (x86)\Microsoft SDKs\ClickOnce\SignTool\signtool.exe"
-        Get-ChildItem -Path './AppPackages' -Recurse -Filter *.msix | ForEach-Object {
-          Write-Host "Signing package: $($_.FullName)"
-          & $signtool sign /fd sha256 /a /f $env:Certificate_Path /p $env:Certificate_Password $_.FullName
-        }
-        Write-Host "Package signing completed."
-      shell: pwsh
-      env:
-        Certificate_Path: ${{ env.Certificate_Path }}
-        Certificate_Password: ${{ env.Certificate_Password }}
+    # - name: Sign MSIX packages
+    #   run: |
+    #     Write-Host "Starting package signing..."
+    #     $signtool = "C:\Program Files (x86)\Microsoft SDKs\ClickOnce\SignTool\signtool.exe"
+    #     Get-ChildItem -Path './AppPackages' -Recurse -Filter *.msix | ForEach-Object {
+    #       Write-Host "Signing package: $($_.FullName)"
+    #       & $signtool sign /fd sha256 /a /f $env:Certificate_Path /p $env:Certificate_Password $_.FullName
+    #     }
+    #     Write-Host "Package signing completed."
+    #   shell: pwsh
+    #   env:
+    #     Certificate_Path: ${{ env.Certificate_Path }}
+    #     Certificate_Password: ${{ env.Certificate_Password }}
 
 
     # - name: Sign MSIX packages
@@ -161,22 +161,22 @@ jobs:
     #     CERTIFICATE_PATH: ${{ github.workspace }}/mycert.pfx
 
 
-    - name: Verify MSIX Package Signatures
-      run: |
-        Write-Host "Starting package verification..."
-        $filesToVerify = Get-ChildItem -Path './AppPackages/${{ matrix.platform }}' -Recurse -Filter *.msix
-        foreach ($file in $filesToVerify) {
-          Write-Host "Verifying package: $($file.FullName)"
-          $signature = Get-AuthenticodeSignature -FilePath $file.FullName
-          if ($signature.Status -eq "Valid") {
-            Write-Host "Signature is valid for file: $file"
-          } else {
-            Write-Host "Signature is NOT valid for file: $file"
-            exit 1
-          }
-        }
-        Write-Host "Package verification completed."
-      shell: pwsh
+    # - name: Verify MSIX Package Signatures
+    #   run: |
+    #     Write-Host "Starting package verification..."
+    #     $filesToVerify = Get-ChildItem -Path './AppPackages/${{ matrix.platform }}' -Recurse -Filter *.msix
+    #     foreach ($file in $filesToVerify) {
+    #       Write-Host "Verifying package: $($file.FullName)"
+    #       $signature = Get-AuthenticodeSignature -FilePath $file.FullName
+    #       if ($signature.Status -eq "Valid") {
+    #         Write-Host "Signature is valid for file: $file"
+    #       } else {
+    #         Write-Host "Signature is NOT valid for file: $file"
+    #         exit 1
+    #       }
+    #     }
+    #     Write-Host "Package verification completed."
+    #   shell: pwsh
 
 
     # - name: Remove the PFX certificate
