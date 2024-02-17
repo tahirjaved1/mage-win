@@ -48,6 +48,8 @@ jobs:
 
     env:
       Solution_Name: MageWin.sln
+      Certificate_Path: ./code_signing_cert.pfx
+      Certificate_Password: 12345
 
     steps:
     - name: Checkout
@@ -76,15 +78,20 @@ jobs:
     #     [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
     #   shell: pwsh
 
-    - name: Decode the pfx and save the Signing_Certificate
-      run: |
-        $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "./code_signing_cert.pfx"
-        # [System.IO.File]::Copy("./code_signing_cert.pfx", $certificatePath)
-      shell: pwsh
+    # - name: Decode the pfx and save the Signing_Certificate
+    #   run: |
+    #     $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "./code_signing_cert.pfx"
+    #     # [System.IO.File]::Copy("./code_signing_cert.pfx", $certificatePath)
+    #   shell: pwsh
+
+    # - name: Create the app package
+    #   run: |
+    #     msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="$certificatePath" /p:PackageCertificatePassword="12345" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true 
 
     - name: Create the app package
       run: |
-        msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="$certificatePath" /p:PackageCertificatePassword="12345" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
+        msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true /p:AppxPackageSigningEnabled=false 
+        
       env:
         Appx_Bundle: Never
         Appx_Package_Build_Mode: SideloadOnly
@@ -117,25 +124,17 @@ jobs:
     - name: Sign MSIX packages
       run: |
         Write-Host "Starting package signing..."
-        
-        # Output secrets/env vars
-        Write-Host "Certificate path: ./code_signing_cert.pfx"
-    
-        # Create a certificate object without a password
-        $securePassword = ConvertTo-SecureString -String $env:CERTIFICATE_PASSWORD -AsPlainText -Force
-        $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2("./code_signing_cert.pfx")
-    
+        $signtool = "C:\Program Files (x86)\Microsoft SDKs\ClickOnce\SignTool\signtool.exe"
+        $certPwd = ConvertTo-SecureString -String $env:Certificate_Password -AsPlainText -Force
         Get-ChildItem -Path './AppPackages' -Recurse -Filter *.msix | ForEach-Object {
           Write-Host "Signing package: $($_.FullName)"
-          
-          # Test single package signing  
-          Set-AuthenticodeSignature -FilePath $_.FullName -Certificate $cert
+          & $signtool sign /fd sha256 /a /f $env:Certificate_Path /p $certPwd $_.FullName
         }
-    
         Write-Host "Package signing completed."
       shell: pwsh
       env:
-        CERTIFICATE_PASSWORD: 12345
+        Certificate_Path: ${{ env.Certificate_Path }}
+        Certificate_Password: ${{ env.Certificate_Password }}
 
 
     # - name: Sign MSIX packages
