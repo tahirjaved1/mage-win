@@ -67,57 +67,17 @@ jobs:
       run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration
       env:
         Configuration: ${{ matrix.configuration }}
-    # - name: Decode the pfx and save the Signing_Certificate
-    #   run: |
-    #     $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.PFX_FILE }}")
-    #     $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "mycert.pfx"
-    #     [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
-    #   shell: pwsh
 
-    # - name: Create the app package
-    #   run: |
-    #     $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.PFX_FILE }}")
-    #     $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "mycert.pfx"
-    #     [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
-    #     msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="$certificatePath" /p:PackageCertificatePassword="${{ secrets.CERTIFICATEPASSWORD }}" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
-    #   env:
-    #     Appx_Bundle: Never
-    #     Appx_Package_Build_Mode: SideloadOnly
-    #     Appx_Package_Dir: ./AppPackages/
-    #     Configuration: ${{ matrix.configuration }}
-    #     Platform: ${{ matrix.platform }}        
-
-    - name: Obtain Let's Encrypt Certificate and Sign Package
+    - name: Decode the pfx and save the Signing_Certificate
       run: |
-        Install-Module -Name Posh-ACME -Scope CurrentUser -Force
-        Set-PAServer LE_PROD # Set ACME server to Let's Encrypt production server
-        New-PAAccount -AcceptTOS -Contact "tahirjavedbhutta@gmail.com" -Force
-        Write-Output "ACME account created."
-
-        $pArgs = @{
-            Domain = "maxipackage.duckdns.org"
-            DnsPlugin = "DuckDNS"
-            PluginArgs = @{DuckDNSToken="a3a21270-a758-46a9-9e24-ae3d31773d9f"}
-            PfxPass = "DuckDNS"
-        }
-
-        Write-Output "Requesting certificate..."
-        $certInfo = New-PACertificate $pArgs -AcceptTOS -Force
-
-        if ($null -eq $certInfo) {
-            Write-Error "Failed to obtain certificate."
-            exit 1
-        }
-
-        Write-Output "Certificate obtained."
-        $pfxPath = $certInfo.PfxFullChainFile
-
-        Write-Output "Using the PFX file for package signing..."
-
+        $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.PXFFILE }}")
+        $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "mycert.pfx"
+        [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
+      shell: pwsh
 
     - name: Create the app package
       run: |
-        msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="$pfxPath" /p:PackageCertificatePassword="DuckDNS" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
+        msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="$certificatePath" /p:PackageCertificatePassword="${{ secrets.CERTIFICATEPASSWORD }}" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true
       env:
         Appx_Bundle: Never
         Appx_Package_Build_Mode: SideloadOnly
@@ -125,32 +85,29 @@ jobs:
         Configuration: ${{ matrix.configuration }}
         Platform: ${{ matrix.platform }}
 
+    - name: Sign MSIX Package with PowerShell
+      run: |
+        $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($certificatePath, $securePassword)
+        Get-ChildItem -Path './AppPackages/${{ matrix.platform }}' -Recurse -Filter *.msix | ForEach-Object {
+          Set-AuthenticodeSignature -FilePath $_.FullName -Certificate $certificate -TimestampServer 'http://timestamp.digicert.com'
+        }
+      env:
+        securePassword: ${{ secrets.CERTIFICATEPASSWORD }}
+      shell: pwsh
 
-
-    # - name: Sign MSIX Package with PowerShell
-    #   run: |
-    #     $certPath = "./Mage.pfx"
-    #     $certPassword = "${{ secrets.CERTIFICATEPASSWORD }}"
-    #     $securePassword = ConvertTo-SecureString -String $certPassword -Force -AsPlainText
-    #     $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($certPath, $securePassword)
-    #     Get-ChildItem -Path './AppPackages/${{ matrix.platform }}' -Recurse -Filter *.msix | ForEach-Object {
-    #       Set-AuthenticodeSignature -FilePath $_.FullName -Certificate $certificate -TimestampServer 'http://timestamp.digicert.com'
-    #     }
-    #   shell: pwsh
-
-    # - name: Verify MSIX Package Signatures
-    #   run: |
-    #     $filesToVerify = Get-ChildItem -Path './AppPackages/${{ matrix.platform }}' -Recurse -Filter *.msix
-    #     foreach ($file in $filesToVerify) {
-    #       $signature = Get-AuthenticodeSignature -FilePath $file.FullName
-    #       if ($signature.Status -eq "Valid") {
-    #         Write-Host "Signature is valid for file: $file"
-    #       } else {
-    #         Write-Host "Signature is NOT valid for file: $file"
-    #         exit 1
-    #       }
-    #     }
-    #   shell: pwsh
+    - name: Verify MSIX Package Signatures
+      run: |
+        $filesToVerify = Get-ChildItem -Path './AppPackages/${{ matrix.platform }}' -Recurse -Filter *.msix
+        foreach ($file in $filesToVerify) {
+          $signature = Get-AuthenticodeSignature -FilePath $file.FullName
+          if ($signature.Status -eq "Valid") {
+            Write-Host "Signature is valid for file: $file"
+          } else {
+            Write-Host "Signature is NOT valid for file: $file"
+            exit 1
+          }
+        }
+      shell: pwsh
 
     # - name: Remove the PFX certificate
     #   run: Remove-Item -Path "GitHubActionsWorkflow.pfx"
