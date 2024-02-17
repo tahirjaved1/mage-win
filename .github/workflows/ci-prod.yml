@@ -98,18 +98,11 @@ jobs:
 
         $securePassword = $env:CERTIFICATE_PASSWORD
 
-        # Test certificate object creation
-        $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($env:CERTIFICATE_PATH, $securePassword)
-        if(!$certificate){
-          Write-Error "Certificate object creation failed"
-          exit 1
-        }
-
         Get-ChildItem -Path './AppPackages' -Recurse -Filter *.msix | ForEach-Object {
           Write-Host "Signing package: $($_.FullName)"
 
           # Test single package signing  
-          Set-AuthenticodeSignature -FilePath $_.FullName -Certificate $certificate -TimestampServer 'http://timestamp.digicert.com'
+          Set-AuthenticodeSignature -FilePath $_.FullName -Certificate $securePassword -TimestampServer 'http://timestamp.digicert.com'
         }
 
         Write-Host "Package signing completed."
