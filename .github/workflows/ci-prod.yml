@@ -94,8 +94,6 @@ jobs:
         Write-Host "Certificate password: $env:CERTIFICATE_PASSWORD"
         Write-Host "Certificate path: $env:CERTIFICATE_PATH"
 
-        
-
         $securePassword = $env:CERTIFICATE_PASSWORD
 
         Get-ChildItem -Path './AppPackages' -Recurse -Filter *.msix | ForEach-Object {
