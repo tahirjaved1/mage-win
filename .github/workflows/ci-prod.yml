@@ -68,12 +68,18 @@ jobs:
       env:
         Configuration: ${{ matrix.configuration }}
 
+    # - name: Decode the pfx and save the Signing_Certificate
+    #   run: |
+    #     # $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.cert }}")
+    #     # $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "mycert.pfx"
+    #     $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "./code_signing_cert.pfx"
+    #     [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
+    #   shell: pwsh
+
     - name: Decode the pfx and save the Signing_Certificate
       run: |
-        # $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.cert }}")
-        # $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "mycert.pfx"
         $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "./code_signing_cert.pfx"
-        [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
+        [System.IO.File]::Copy("./code_signing_cert.pfx", $certificatePath)
       shell: pwsh
 
     - name: Create the app package
