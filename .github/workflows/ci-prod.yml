@@ -91,7 +91,7 @@ jobs:
         Write-Host "Starting package signing..."
         
         # Output secrets/env vars
-        Write-Host "Certificate password: ***"
+        Write-Host "Certificate password: "${{ secrets.CERTIFICATEPASSWORD }}"
         Write-Host "Certificate path: $env:CERTIFICATE_PATH"
     
         $securePassword = ConvertTo-SecureString -String $env:CERTIFICATE_PASSWORD -AsPlainText -Force
