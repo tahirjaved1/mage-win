@@ -94,7 +94,9 @@ jobs:
         Write-Host "Certificate password: $env:CERTIFICATE_PASSWORD"
         Write-Host "Certificate path: $env:CERTIFICATE_PATH"
 
-        $securePassword = ConvertTo-SecureString -String $env:CERTIFICATE_PASSWORD -Force -AsPlainText
+        
+
+        $securePassword = $env:CERTIFICATE_PASSWORD
 
         # Test certificate object creation
         $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($env:CERTIFICATE_PATH, $securePassword)
