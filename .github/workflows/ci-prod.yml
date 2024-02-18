@@ -97,8 +97,7 @@ jobs:
           $signtool = "C:\Program Files (x86)\Microsoft SDKs\ClickOnce\SignTool\signtool.exe"
           Get-ChildItem -Path './AppPackages' -Recurse -Filter *.msix | ForEach-Object {
             Write-Host "Signing package: $($_.FullName)"
-            & $signtool sign /a /f $env:Certificate_Path /tr http://timestamp.comodoca.com /td sha256 $_.FullName
-
+            & $signtool sign /a /f $env:Certificate_Path /tr timestamp.comodoca.com/?td=sha256 $_.FullName
           }
           Write-Host "Package signing completed."
         shell: pwsh
