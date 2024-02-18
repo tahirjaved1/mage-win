@@ -1,4 +1,4 @@
-name: ci-prod.yml
+name: CI for MSIX Code Signing
 
 on:
   push:
@@ -18,26 +18,22 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
-  
-    - name: Setup dotnet
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '6.0.x'
+      - uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: dotnet restore
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '6.0.x'
 
-    - name: Build
-      run: dotnet build
+      - name: Install dependencies
+        run: dotnet restore
 
-    # # Uncomment to enable testing
-    # - name: Test with the dotnet CLI
-    #   run: dotnet test
+      - name: Build
+        run: dotnet build
 
   deploy:
     if: ${{ github.actor != 'dependabot[bot]' }}
-    name: Create MSIX package artifact
+    name: Create and sign MSIX package artifact
     needs: [test]
     strategy:
       matrix:
@@ -48,145 +44,69 @@ jobs:
 
     env:
       Solution_Name: MageWin.sln
-      Certificate_Path: ./code_signing_cert.pfx
+      Certificate_Path: code_signing_cert.pfx
       Certificate_Password: 12345
+      Company_Name: Mage
+      Subject_CN: CN=Mage
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Install .NET Core
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 6.0.x
+      - name: Install .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 6.0.x
 
-    - name: Setup MSBuild.exe
-      uses: microsoft/setup-msbuild@v2.0.0
+      - name: Setup MSBuild.exe
+        uses: microsoft/setup-msbuild@v2.0.0
 
-    - name: Restore the application
-      run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration
-      env:
-        Configuration: ${{ matrix.configuration }}
+      - name: Restore the application
+        run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration
+        env:
+          Configuration: ${{ matrix.configuration }}
 
-    # - name: Decode the pfx and save the Signing_Certificate
-    #   run: |
-    #     # $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.cert }}")
-    #     # $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "mycert.pfx"
-    #     $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "./code_signing_cert.pfx"
-    #     [System.IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
-    #   shell: pwsh
+      - name: Create self-signed code signing certificate
+        run: |
+          $cert = New-SelfSignedCertificate -Subject $env:Subject_CN -FriendlyName $env:Company_Name -KeyAlgorithm RSA -KeyLength 2048 -Provider "Microsoft Enhanced RSA and AES Cryptographic Provider" -KeyExportPolicy Exportable -KeyUsage DigitalSignature -Type CodeSigningCert -CertStoreLocation "Cert:\LocalMachine\My" -NotAfter (Get-Date).AddYears(5) -HashAlgorithm 'SHA256'
+          $pwd = ConvertTo-SecureString -String $env:Certificate_Password -Force -AsPlainText
+          Export-PfxCertificate -Cert "cert:\LocalMachine\My\$($cert.Thumbprint)" -FilePath $env:Certificate_Path -Password $pwd
+          Remove-Item -Path "Cert:\LocalMachine\My\$($cert.Thumbprint)"
+        shell: pwsh
+        env:
+          Certificate_Path: ${{ env.Certificate_Path }}
+          Certificate_Password: ${{ env.Certificate_Password }}
+          Company_Name: ${{ env.Company_Name }}
+          Subject_CN: ${{ env.Subject_CN }}
 
-    # - name: Decode the pfx and save the Signing_Certificate
-    #   run: |
-    #     $certificatePath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "./code_signing_cert.pfx"
-    #     # [System.IO.File]::Copy("./code_signing_cert.pfx", $certificatePath)
-    #   shell: pwsh
+      - name: Create the app package
+        run: |
+          msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxBundle=Never /p:PackageCertificateKeyFile="$env:Certificate_Path" /p:PackageCertificatePassword="$env:Certificate_Password" /p:AppxPackageDir="./AppPackages/" /p:GenerateAppxPackageOnBuild=true
+        env:
+          Configuration: ${{ matrix.configuration }}
+          Platform: ${{ matrix.platform }}
 
-    # - name: Create the app package
-    #   run: |
-    #     msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile="$certificatePath" /p:PackageCertificatePassword="12345" /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true 
+      - name: Sign MSIX packages
+        run: |
+          Write-Host "Starting package signing..."
+          $signtool = "C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe"
+          Get-ChildItem -Path './AppPackages' -Recurse -Filter *.msix | ForEach-Object {
+            Write-Host "Signing package: $($_.FullName)"
+            & $signtool sign /fd SHA256 /a /f $env:Certificate_Path /p $env:Certificate_Password $_.FullName
+          }
+          Write-Host "Package signing completed."
+        shell: pwsh
+        env:
+          Certificate_Path: ${{ env.Certificate_Path }}
+          Certificate_Password: ${{ env.Certificate_Password }}
 
-    - name: Create the app package
-      run: |
-        msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:AppxPackageDir="$env:Appx_Package_Dir" /p:GenerateAppxPackageOnBuild=true /p:AppxPackageSigningEnabled=false 
-        
-      env:
-        Appx_Bundle: Never
-        Appx_Package_Build_Mode: SideloadOnly
-        Appx_Package_Dir: ./AppPackages/
-        Configuration: ${{ matrix.configuration }}
-        Platform: ${{ matrix.platform }}
-    
-    - name: Check Compatibility
-      run: |
-        Write-Host "Checking compatibility between Set-AuthenticodeSignature cmdlet and MSIX package format..."
-    
-        # Check the version of PowerShell
-        $psVersion = $PSVersionTable.PSVersion
-        Write-Host "PowerShell version: $psVersion"
-    
-        # Check if the Set-AuthenticodeSignature cmdlet is available
-        $cmdletAvailable = Get-Command Set-AuthenticodeSignature -ErrorAction SilentlyContinue
-        if ($cmdletAvailable) {
-          Write-Host "Set-AuthenticodeSignature cmdlet is available."
-        } else {
-          Write-Host "Set-AuthenticodeSignature cmdlet is not available."
-          exit 1
-        }
-    
-        # Add any additional checks for compatibility here
-    
-        Write-Host "Compatibility check completed."
-      shell: pwsh
-
-    # - name: Sign MSIX packages
-    #   run: |
-    #     Write-Host "Starting package signing..."
-    #     $signtool = "C:\Program Files (x86)\Microsoft SDKs\ClickOnce\SignTool\signtool.exe"
-    #     Get-ChildItem -Path './AppPackages' -Recurse -Filter *.msix | ForEach-Object {
-    #       Write-Host "Signing package: $($_.FullName)"
-    #       & $signtool sign /fd sha256 /a /f $env:Certificate_Path /p $env:Certificate_Password $_.FullName
-    #     }
-    #     Write-Host "Package signing completed."
-    #   shell: pwsh
-    #   env:
-    #     Certificate_Path: ${{ env.Certificate_Path }}
-    #     Certificate_Password: ${{ env.Certificate_Password }}
-
-
-    # - name: Sign MSIX packages
-    #   run: |
-    #     Write-Host "Starting package signing..."
-        
-    #     # Output secrets/env vars
-    #     Write-Host "Certificate password: ***"
-    #     Write-Host "Certificate path: $env:CERTIFICATE_PATH"
-    
-    #     $securePassword = ConvertTo-SecureString -String $env:CERTIFICATE_PASSWORD -AsPlainText -Force
-    #     $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($env:CERTIFICATE_PATH, $securePassword)
-    
-    #     Get-ChildItem -Path './AppPackages' -Recurse -Filter *.msix | ForEach-Object {
-    #       Write-Host "Signing package: $($_.FullName)"
-    
-    #       # Test single package signing  
-    #       Set-AuthenticodeSignature -FilePath $_.FullName -Certificate $cert -TimestampServer 'http://timestamp.digicert.com'
-    #     }
-    
-    #     Write-Host "Package signing completed."
-    #   shell: pwsh
-    #   env:
-    #     CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATEPASSWORD }}
-    #     CERTIFICATE_PATH: ${{ github.workspace }}/mycert.pfx
-
-
-    # - name: Verify MSIX Package Signatures
-    #   run: |
-    #     Write-Host "Starting package verification..."
-    #     $filesToVerify = Get-ChildItem -Path './AppPackages/${{ matrix.platform }}' -Recurse -Filter *.msix
-    #     foreach ($file in $filesToVerify) {
-    #       Write-Host "Verifying package: $($file.FullName)"
-    #       $signature = Get-AuthenticodeSignature -FilePath $file.FullName
-    #       if ($signature.Status -eq "Valid") {
-    #         Write-Host "Signature is valid for file: $file"
-    #       } else {
-    #         Write-Host "Signature is NOT valid for file: $file"
-    #         exit 1
-    #       }
-    #     }
-    #     Write-Host "Package verification completed."
-    #   shell: pwsh
-
-
-    # - name: Remove the PFX certificate
-    #   run: Remove-Item -Path "GitHubActionsWorkflow.pfx"
-
-    - name: Upload MSIX package
-      uses: actions/upload-artifact@v4
-      with:
-        name: MSIX Package ${{ matrix.platform }}
-        path: ./AppPackages/**/*.msix
+      - name: Upload MSIX package
+        uses: actions/upload-artifact@v4
+        with:
+          name: MSIX Package ${{ matrix.platform }}
+          path: ./AppPackages/**/*.msix
 
   create-tag-and-release:
     if: ${{ github.actor != 'dependabot[bot]' }}
@@ -201,17 +121,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetches all history for all tags and branches
-                
+          fetch-depth: 0
+
       - name: Download all MSIX packages
         uses: actions/download-artifact@v4
 
       - name: Get Project version from Package.appxmanifest
         id: project-version-latest
         run: |
-          [xml]$manifest = Get-Content -Path './Package.appxmanifest' # The path to the Package.appxmanifest file in the root directory
+          [xml]$manifest = Get-Content -Path './Package.appxmanifest'
           $version = $manifest.Package.Identity.Version
-          echo "::set-output name=current-version::$version"      
+          echo "::set-output name=current-version::$version"
 
       - name: Create a tag and release
         uses: softprops/action-gh-release@v1
