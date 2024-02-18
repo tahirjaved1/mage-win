@@ -71,19 +71,17 @@ jobs:
       - name: Create self-signed code signing certificate
         run: |
           $cert = New-SelfSignedCertificate -Subject $env:Subject_CN -FriendlyName $env:Company_Name -KeyAlgorithm RSA -KeyLength 2048 -Provider "Microsoft Enhanced RSA and AES Cryptographic Provider" -KeyExportPolicy Exportable -KeyUsage DigitalSignature -Type CodeSigningCert -CertStoreLocation "Cert:\LocalMachine\My" -NotAfter (Get-Date).AddYears(5) -HashAlgorithm 'SHA256'
-          $pwd = ConvertTo-SecureString -String $env:Certificate_Password -Force -AsPlainText
-          Export-PfxCertificate -Cert "cert:\LocalMachine\My\$($cert.Thumbprint)" -FilePath $env:Certificate_Path -Password $pwd
+          Export-PfxCertificate -Cert "cert:\LocalMachine\My\$($cert.Thumbprint)" -FilePath $env:Certificate_Path -Password $null
           Remove-Item -Path "Cert:\LocalMachine\My\$($cert.Thumbprint)"
         shell: pwsh
         env:
           Certificate_Path: ${{ env.Certificate_Path }}
-          Certificate_Password: ${{ env.Certificate_Password }}
           Company_Name: ${{ env.Company_Name }}
           Subject_CN: ${{ env.Subject_CN }}
 
       - name: Create the app package
         run: |
-          msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxBundle=Never /p:PackageCertificateKeyFile="$env:Certificate_Path" /p:PackageCertificatePassword="$env:Certificate_Password" /p:AppxPackageDir="./AppPackages/" /p:GenerateAppxPackageOnBuild=true
+          msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:Platform /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxBundle=Never /p:PackageCertificateKeyFile="$env:Certificate_Path" /p:AppxPackageDir="./AppPackages/" /p:GenerateAppxPackageOnBuild=true
         env:
           Configuration: ${{ matrix.configuration }}
           Platform: ${{ matrix.platform }}
@@ -94,13 +92,13 @@ jobs:
           $signtool = "C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe"
           Get-ChildItem -Path './AppPackages' -Recurse -Filter *.msix | ForEach-Object {
             Write-Host "Signing package: $($_.FullName)"
-            & $signtool sign /fd SHA256 /a /f $env:Certificate_Path /p $env:Certificate_Password $_.FullName
+            & $signtool sign /fd SHA256 /a /f $env:Certificate_Path $_.FullName
           }
           Write-Host "Package signing completed."
         shell: pwsh
         env:
           Certificate_Path: ${{ env.Certificate_Path }}
-          Certificate_Password: ${{ env.Certificate_Password }}
+
 
       - name: Upload MSIX package
         uses: actions/upload-artifact@v4
