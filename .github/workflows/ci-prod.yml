@@ -94,7 +94,7 @@ jobs:
       - name: Sign MSIX packages
         run: |
           Write-Host "Starting package signing..."
-          $signtool = "C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe"
+          $signtool = "C:\Program Files (x86)\Microsoft SDKs\ClickOnce\SignTool\signtool.exe"
           Get-ChildItem -Path './AppPackages' -Recurse -Filter *.msix | ForEach-Object {
             Write-Host "Signing package: $($_.FullName)"
             & $signtool sign /fd SHA256 /a /f $env:Certificate_Path $_.FullName
