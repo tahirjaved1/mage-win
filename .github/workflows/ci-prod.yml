@@ -71,7 +71,12 @@ jobs:
       - name: Create self-signed code signing certificate
         run: |
           $cert = New-SelfSignedCertificate -Subject $env:Subject_CN -FriendlyName $env:Company_Name -KeyAlgorithm RSA -KeyLength 2048 -Provider "Microsoft Enhanced RSA and AES Cryptographic Provider" -KeyExportPolicy Exportable -KeyUsage DigitalSignature -Type CodeSigningCert -CertStoreLocation "Cert:\LocalMachine\My" -NotAfter (Get-Date).AddYears(5) -HashAlgorithm 'SHA256'
-          Export-PfxCertificate -Cert "cert:\LocalMachine\My\$($cert.Thumbprint)" -FilePath $env:Certificate_Path -Password $null
+          $store = New-Object System.Security.Cryptography.X509Certificates.X509Store("My", "LocalMachine")
+          $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+          $store.Add($cert)
+          $store.Close()
+          $exportedCert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($cert)
+          [System.IO.File]::WriteAllBytes($env:Certificate_Path, $exportedCert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Pfx))
           Remove-Item -Path "Cert:\LocalMachine\My\$($cert.Thumbprint)"
         shell: pwsh
         env:
