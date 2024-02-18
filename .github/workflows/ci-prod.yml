@@ -91,13 +91,28 @@ jobs:
           Configuration: ${{ matrix.configuration }}
           Platform: ${{ matrix.platform }}
 
+      - name: Check Certificate
+        run: |
+          Write-Host "Checking certificate..."
+          $signtool = "C:\Program Files (x86)\Microsoft SDKs\ClickOnce\SignTool\signtool.exe"
+          & $signtool verify /pa /v $env:Certificate_Path
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Certificate is valid."
+          } else {
+            Write-Host "Certificate is invalid. Please check the certificate."
+            exit 1
+          }
+        shell: pwsh
+        env:
+          Certificate_Path: ${{ env.Certificate_Path }}
+
       - name: Sign MSIX packages
         run: |
           Write-Host "Starting package signing..."
           $signtool = "C:\Program Files (x86)\Microsoft SDKs\ClickOnce\SignTool\signtool.exe"
           Get-ChildItem -Path './AppPackages' -Recurse -Filter *.msix | ForEach-Object {
             Write-Host "Signing package: $($_.FullName)"
-            & $signtool sign /a /f $env:Certificate_Path /tr http://timestamp.sectigo.com/?td=sha256 /td sha256 $_.FullName
+            & $signtool sign /f $env:Certificate_Path /tr http://timestamp.sectigo.com/?td=sha256 /td sha256 $_.FullName
           }
           Write-Host "Package signing completed."
         shell: pwsh
