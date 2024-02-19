@@ -45,7 +45,7 @@ jobs:
     env:
       Solution_Name: MageWin.sln
       Certificate_Path: code_signing_cert.pfx
-      Certificate_Password: "12345"
+      Certificate_Password: 12345
       Company_Name: Mage
       Subject_CN: CN=Mage
 
